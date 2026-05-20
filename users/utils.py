@@ -2,7 +2,6 @@ import io
 import random
 
 from django.core.files.base import ContentFile
-
 from PIL import Image, ImageDraw, ImageFont
 
 from .constants import AVATAR_COLORS, AVATAR_FONT_SIZE, AVATAR_SIZE

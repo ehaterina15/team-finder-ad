@@ -4,7 +4,6 @@ from django.db import models
 from .constants import (
     PROJECT_NAME_MAX_LENGTH,
     PROJECT_STATUS_CHOICES,
-    PROJECT_STATUS_MAX_LENGTH,
     PROJECT_STATUS_OPEN,
 )
 
