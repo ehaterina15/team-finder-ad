@@ -1,4 +1,5 @@
 import json
+from http import HTTPStatus
 
 from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
 from django.contrib.auth.decorators import login_required
@@ -6,9 +7,10 @@ from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_GET, require_POST
 
+from .constants import SKILLS_AUTOCOMPLETE_LIMIT
 from .forms import LoginForm, ProfileEditForm, RegisterForm, UserPasswordChangeForm
 from .models import Skill, User
-from .pagination import paginate
+from team_finder.pagination import paginate
 
 USER_LIST_PAGE_SIZE = 12
 
@@ -91,18 +93,20 @@ def change_password(request):
 
 @require_GET
 def skills_autocomplete(request):
-    q = request.GET.get('q', '')
-    skills = Skill.objects.filter(name__istartswith=q)[:10]
-    data = [{'id': s.pk, 'name': s.name} for s in skills]
+    query = request.GET.get('q', '')
+    skills = Skill.objects.filter(name__istartswith=query)[:SKILLS_AUTOCOMPLETE_LIMIT]
+    data = [{'id': skill.pk, 'name': skill.name} for skill in skills]
     return JsonResponse(data, safe=False)
 
 
 @login_required
 @require_POST
 def skill_add(request, pk):
-    user = get_object_or_404(User, pk=pk)
+    user = User.objects.filter(pk=pk).first()
+    if user is None:
+        return JsonResponse({'error': 'Пользователь не найден'}, status=HTTPStatus.NOT_FOUND)
     if request.user != user:
-        return JsonResponse({'error': 'Нет доступа'}, status=403)
+        return JsonResponse({'error': 'Нет доступа'}, status=HTTPStatus.FORBIDDEN)
 
     try:
         data = json.loads(request.body)
@@ -114,14 +118,16 @@ def skill_add(request, pk):
     created = False
 
     if skill_id:
-        skill = get_object_or_404(Skill, pk=skill_id)
+        skill = Skill.objects.filter(pk=skill_id).first()
+        if skill is None:
+            return JsonResponse({'error': 'Навык не найден'}, status=HTTPStatus.NOT_FOUND)
     elif name:
         skill, created = Skill.objects.get_or_create(name=name)
     else:
-        return JsonResponse({'error': 'Нет данных'}, status=400)
+        return JsonResponse({'error': 'Нет данных'}, status=HTTPStatus.BAD_REQUEST)
 
     added = False
-    if skill not in user.skills.all():
+    if not user.skills.filter(pk=skill.pk).exists():
         user.skills.add(skill)
         added = True
 
@@ -136,11 +142,16 @@ def skill_add(request, pk):
 @login_required
 @require_POST
 def skill_remove(request, pk, skill_pk):
-    user = get_object_or_404(User, pk=pk)
-    skill = get_object_or_404(Skill, pk=skill_pk)
+    user = User.objects.filter(pk=pk).first()
+    if user is None:
+        return JsonResponse({'error': 'Пользователь не найден'}, status=HTTPStatus.NOT_FOUND)
+
+    skill = Skill.objects.filter(pk=skill_pk).first()
+    if skill is None:
+        return JsonResponse({'error': 'Навык не найден'}, status=HTTPStatus.NOT_FOUND)
 
     if request.user != user:
-        return JsonResponse({'error': 'Нет доступа'}, status=403)
+        return JsonResponse({'error': 'Нет доступа'}, status=HTTPStatus.FORBIDDEN)
 
     user.skills.remove(skill)
     return JsonResponse({'status': 'ok'})

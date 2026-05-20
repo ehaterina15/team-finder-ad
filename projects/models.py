@@ -5,6 +5,7 @@ from .constants import (
     PROJECT_NAME_MAX_LENGTH,
     PROJECT_STATUS_CHOICES,
     PROJECT_STATUS_MAX_LENGTH,
+    PROJECT_STATUS_OPEN,
 )
 
 
@@ -34,7 +35,7 @@ class Project(models.Model):
     status = models.CharField(
         max_length=max(len(k) for k, _ in PROJECT_STATUS_CHOICES),
         choices=PROJECT_STATUS_CHOICES,
-        default=PROJECT_STATUS_CHOICES[0][0],
+        default=PROJECT_STATUS_OPEN,
         verbose_name='Статус',
     )
     participants = models.ManyToManyField(

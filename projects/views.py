@@ -1,12 +1,14 @@
+from http import HTTPStatus
+
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
-from .constants import PROJECT_STATUS_CHOICES
+from .constants import PROJECT_STATUS_CLOSED, PROJECT_STATUS_OPEN
 from .forms import ProjectForm
 from .models import Project
-from .pagination import paginate
+from team_finder.pagination import paginate
 
 PAGE_SIZE = 12
 
@@ -59,13 +61,18 @@ def project_edit(request, pk):
 @login_required
 @require_POST
 def project_complete(request, pk):
-    project = get_object_or_404(Project, pk=pk)
-    if project.owner_id != request.user.pk or project.status != PROJECT_STATUS_CHOICES[0][0]:
+    project = Project.objects.filter(pk=pk).first()
+    if project is None:
+        return JsonResponse(
+            {'status': 'error', 'message': 'Проект не найден'},
+            status=HTTPStatus.NOT_FOUND,
+        )
+    if project.owner_id != request.user.pk or project.status != PROJECT_STATUS_OPEN:
         return JsonResponse(
             {'status': 'error', 'message': 'Недостаточно прав для этого действия'},
-            status=403,
+            status=HTTPStatus.FORBIDDEN,
         )
-    project.status = PROJECT_STATUS_CHOICES[1][0]
+    project.status = PROJECT_STATUS_CLOSED
     project.save(update_fields=['status'])
     return JsonResponse({'status': 'ok', 'project_status': project.status})
 
@@ -73,17 +80,22 @@ def project_complete(request, pk):
 @login_required
 @require_POST
 def toggle_participate(request, pk):
-    project = get_object_or_404(Project, pk=pk)
+    project = Project.objects.filter(pk=pk).first()
+    if project is None:
+        return JsonResponse(
+            {'status': 'error', 'message': 'Проект не найден'},
+            status=HTTPStatus.NOT_FOUND,
+        )
     user = request.user
     if project.owner_id == user.pk:
         return JsonResponse(
             {'status': 'error', 'message': 'Автор проекта не может присоединиться как участник'},
-            status=400,
+            status=HTTPStatus.BAD_REQUEST,
         )
-    if project.status != PROJECT_STATUS_CHOICES[0][0]:
+    if project.status != PROJECT_STATUS_OPEN:
         return JsonResponse(
             {'status': 'error', 'message': 'К проекту нельзя присоединиться: набор закрыт'},
-            status=400,
+            status=HTTPStatus.BAD_REQUEST,
         )
     participating = project.participants.filter(pk=user.pk).exists()
     if participating:

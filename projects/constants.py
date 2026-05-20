@@ -1,7 +1,10 @@
 PROJECT_NAME_MAX_LENGTH = 200
 PROJECT_STATUS_MAX_LENGTH = 6
 
+PROJECT_STATUS_OPEN = 'open'
+PROJECT_STATUS_CLOSED = 'closed'
+
 PROJECT_STATUS_CHOICES = [
-    ('open', 'Open'),
-    ('closed', 'Closed'),
+    (PROJECT_STATUS_OPEN, 'Open'),
+    (PROJECT_STATUS_CLOSED, 'Closed'),
 ]
